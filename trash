@@ -1,0 +1,171 @@
+#!/bin/bash
+#
+# Trash cli.
+
+readonly TRASH_DIR="$HOME/.Trash"
+OPTION=""
+FILES=()
+
+#######################################
+# Trash main function
+# Globals:
+#   OPTION
+#   FILES
+# Arguments:
+#   None
+# Returns:
+#   None
+#######################################
+function main() {
+  local confirm_message=">> $(tput setaf 3)$(tput bold)Do you want this work? [y/n]:$(tput sgr0) "
+  local clear_trash_message=">> $(tput setaf 2)Empty a trash can$(tput sgr0)"
+
+  # check trash directory
+  if [ ! -d "$TRASH_DIR" ]; then
+    local not_exist_trash_directory_message=">> $(tput setaf 1)Not exist trash directory:$(tput sgr0) "$TRASH_DIR
+    echo -e "$not_exist_trash_directory_message" 1>&2
+    return
+  fi
+
+  # Set option
+  set_global_options $@
+
+  # echo "[DEBUG] option: "$OPTION
+  # echo "[DEBUG] files: "${FILES[@]}
+
+  display_trash_status
+
+  # process sub options
+  case "$OPTION" in
+  "help")
+    trash_help; return;;
+  "clear")
+    echo -e "$confirm_message"
+    rm -rvi "${TRASH_DIR}"/*
+    return;;
+  "clear-force")
+    rm -rf $TRASH_DIR
+    mkdir $TRASH_DIR
+    display_trash_status
+    echo -e $clear_trash_message; return;;
+  "clear-force-verbose")
+    rm -rfv "${TRASH_DIR}"/*
+    echo -e "$clear_trash_message"; return;;
+  "list")
+    ls -l "$TRASH_DIR"; return;;
+  "list-all")
+    ls -al "$TRASH_DIR"; return;;
+  "remove-force")
+    remove_force=1;;
+  esac
+
+  validate_files $FILES
+
+  # Work
+  if [[ $OPTION == "remove-force" ]]; then
+    local tty_state
+    local yn
+    echo -e ">> $(tput setaf 7)$(tput bold)rm -rf "${FILES[@]}$(tput sgr0)
+    printf "$confirm_message"
+    tty_state=$(stty -g)
+    stty raw
+    yn=$(dd bs=1 count=1 2>/dev/null)
+    stty "$tty_state"
+    echo
+
+    case "$yn" in
+    [yY])
+      printf "%s\0" "${FILES[@]}" | xargs -I{} -0 rm -rfv {}
+      ;;
+    [nN]) ;;
+    *) ;;
+    esac
+  else
+    printf "%s\0" "${FILES[@]}" | xargs -I{} -0 mv -v {} "$TRASH_DIR"
+  fi
+
+  display_trash_status
+}
+
+#######################################
+# Trash help
+# Globals:
+#   None
+# Arguments:
+#   None
+# Returns:
+#   None
+#######################################
+function trash_help() {
+  cat <<<"here document"
+}
+
+#######################################
+# Validate files
+# Globals:
+#   None
+# Arguments:
+#   FILES
+# Returns:
+#   None
+#######################################
+function validate_files() {
+  local caution_directory_message=">> "
+  local files=$1
+
+  # - deprecated because of not support -P option of grep in macos
+  # local regex_valid_to_file_name='(^|(?<=\s))(\/|$HOME|$HOME\/)($|(?=\s))'
+  for file in "${files[@]}"; do
+    # caution
+    if [[ $file =~ ^(\/|$HOME|$HOME\/)$ ]]; then
+      echo "${caution_directory_message}: "$file 1>&2
+      exit 1
+    fi
+  done
+}
+
+#######################################
+# Setting option and files of global variable
+# Globals:
+#   OPTION
+#   FILES
+# Arguments:
+#   Argument of main
+# Returns:
+#   None
+#######################################
+function set_global_options() {
+  # Set default option
+  if [ -z $1 ]; then set -- "-h"; fi
+
+  for arg in "$@"; do
+    shift
+    case "$arg" in
+    "-h" | "-\?" | "--help")                     OPTION="help" ;;
+    "-c" | "--clear")                            OPTION="clear" ;;
+    "-cf" | "--clear-force")                     OPTION="clear-force" ;;
+    "-cfv")                                      OPTION="clear-force-verbose" ;;
+    "-l" | "--list")                             OPTION="list" ;;
+    "-al" | "-la" | "--list-all" | "--all-list") OPTION="list-all" ;;
+    "-rf")                                       OPTION="remove-force" ;;
+    *)                                           [[ $arg =~ ^[^-].* ]] && FILES+=("$arg") ;;
+    esac
+  done
+}
+
+#######################################
+# Display trash status before working
+# Globals:
+#   None
+# Arguments:
+#   None
+# Returns:
+#   None
+#######################################
+function display_trash_status() {
+  local count=$(find ${TRASH_DIR} -type f | wc -l | xargs)
+  local size=$(du -sh ${TRASH_DIR} | cut -f1 | xargs)
+  echo -e "\n  $(tput setaf 7)[TRASH_STATUS] TOTAL: $count | SIZE: $size$(tput sgr0)\n"
+}
+
+main "$@"
