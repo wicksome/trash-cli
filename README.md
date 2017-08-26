@@ -1,8 +1,10 @@
 # trash-cli
 
+> Move files and folders to the trash
+
 WIP
 
-## Installation
+## Install
 
 1. git clone
 2. if not exist `$HOME/.Trash` directory, make directory.
@@ -10,10 +12,13 @@ WIP
 
     ```bash
     alias trash='/PATH/trash-cli/trash'
-    alias rm='trash' 
     ```
     
 ## Usage
+
+```bash
+$ trash --help
+```
 
 ```bash
 # remove files
@@ -33,3 +38,10 @@ $ trash -al
 # rm -rf
 $ trash -rf [file ...]
 ```
+## Tip
+
+Add `alias rm=trash` to your `.zshrc`/`.bashrc` to reduce typing & safely trash files: `$ rm unicorn.png`.
+
+## License
+
+MIT © [Yeongjun Kim](https://wickso.me)
