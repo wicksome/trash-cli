@@ -1,3 +1,5 @@
+# Deprecated
+
 # trash-cli [![Build Status](https://travis-ci.org/wicksome/trash-cli.svg?branch=master)](https://travis-ci.org/wicksome/trash-cli)
 
 > Move files and folders to the trash
